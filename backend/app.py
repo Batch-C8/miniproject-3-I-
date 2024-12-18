@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
 import pandas as pd
+import os
+import pefile
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -47,8 +49,52 @@ def analyze():
     except Exception as e:
         return jsonify({"error": f"An error occurred during analysis: {str(e)}"}), 500
 
+@app.route("/scan", methods=["POST"])
+def scan_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+
+    if not file.filename.endswith(('.exe', '.dll')):
+        return jsonify({"error": "Invalid file type. Only .exe and .dll files are allowed."}), 400
+
+    try:
+        file_path = os.path.join("uploads", file.filename)
+        file.save(file_path)
+
+        pe = pefile.PE(file_path)
+
+        # Extract required attributes
+        attributes = {
+            "fileName": file.filename,
+            "MajorLinkerVersion": pe.OPTIONAL_HEADER.MajorLinkerVersion,
+            "Machine": pe.FILE_HEADER.Machine,
+            "DebugSize": pe.OPTIONAL_HEADER.SizeOfInitializedData,
+            "DllCharacteristics": pe.OPTIONAL_HEADER.DllCharacteristics,
+            "MajorOSVersion": pe.OPTIONAL_HEADER.MajorOperatingSystemVersion,
+        }
+
+        # Clean up saved file
+        #os.remove(file_path)
+
+        # Print attributes to console
+        for key, value in attributes.items():
+            print(f"{key}: {value}")
+
+        # Return attributes as a JSON object (instead of a list)
+        return jsonify(attributes), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Error processing the file: {str(e)}"}), 500
+
 if __name__ == "__main__":
+    os.makedirs("uploads", exist_ok=True)
     app.run(debug=True)
+
+
+
+
 
 
 

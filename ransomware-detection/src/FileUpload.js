@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import './FileUpload.css'
+import './FileUpload.css';
 
 const FileUpload = () => {
   const [formData, setFormData] = useState({
@@ -11,12 +11,46 @@ const FileUpload = () => {
     MajorOSVersion: "",
   });
 
+  const [uploadedFile, setUploadedFile] = useState(null);
+ // const [fileAttributes, setFileAttributes] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleScan = async () => {
+    if (uploadedFile) {
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
+
+      try {
+        const response = await fetch("http://127.0.0.1:5000/scan", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data && data.MajorLinkerVersion !== undefined) {
+          // Set the file attributes correctly
+          //setFileAttributes(data);
+          setFormData({ ...formData, ...data });
+        } else {
+          throw new Error("Invalid response format");
+        }
+      } catch (err) {
+        setError(err.message);
+      }
+    } else {
+      alert("Please upload a file to scan.");
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -57,9 +91,30 @@ const FileUpload = () => {
               value={formData.fileName}
               onChange={handleChange}
               required
+              readOnly
             />
           </label>
         </div>
+        <div>
+          <input type="file" onChange={(e) => setUploadedFile(e.target.files[0])} />
+          <button type="button" onClick={handleScan}>Scan</button>
+          
+          {error && <p style={{ color: "red" }}>{error}</p>}
+
+         {/* {fileAttributes && (
+            <div>
+              <h3>File Attributes</h3>
+              <ul>
+                {Object.entries(fileAttributes).map(([key, value]) => (
+                  <li key={key}>
+                    <strong>{key}:</strong> {value}
+                  </li>
+                ))}
+              </ul>
+            </div> 
+          )}  */}
+        </div>
+
         <div>
           <label>
             Major Linker Version:
@@ -127,11 +182,7 @@ const FileUpload = () => {
         <div>
           <h2>Result</h2>
           <p>File Name: {result.fileName}</p>
-          <p>
-            {result.isSuspicious
-              ?  "The file is safe."
-              :"The file is suspicious." }
-          </p>
+          <p>{result.isSuspicious ? "The file is safe." :"The file is suspicious" }</p>
         </div>
       )}
 
@@ -146,4 +197,3 @@ const FileUpload = () => {
 };
 
 export default FileUpload;
-
