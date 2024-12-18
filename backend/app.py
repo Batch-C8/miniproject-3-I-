@@ -1,14 +1,18 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-'''# Load the pre-trained ML model
-MODEL_PATH = "model/model.pkl"
+# Load the pre-trained ML model
+MODEL_PATH = "model.pkl"
 with open(MODEL_PATH, "rb") as file:
-    model = pickle.load(file)'''
+    model = pickle.load(file)
+
+# Required feature list for the model
+REQUIRED_KEYS = ['MajorLinkerVersion', 'Machine', 'DebugSize', 'DllCharacteristics', 'MajorOSVersion']
 
 @app.route("/")
 def home():
@@ -20,21 +24,20 @@ def analyze():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
+    # Validate that all required keys are present in the input
+    missing_keys = [key for key in REQUIRED_KEYS if key not in data]
+    if missing_keys:
+        return jsonify({"error": f"Missing keys: {', '.join(missing_keys)}"}), 400
+
     try:
-        # Extract features
-        features = [
-            data.get("fileSize", 0), 
-            data.get("entropyValue", 0), 
-            int(data.get("executionBehavior", {}).get("encryptsData", 0)),
-            int(data.get("executionBehavior", {}).get("networkConnection", 0)),
-            int(data.get("executionBehavior", {}).get("dropsExecutables", 0))
-        ]
+        # Extract features into a DataFrame
+        features = pd.DataFrame(data=[[data.get(key, 0) for key in REQUIRED_KEYS]], columns=REQUIRED_KEYS)
 
         # Predict using the ML model
-        prediction = model.predict([features])[0]  # Assuming model expects 2D array for features
-        is_suspicious = bool(prediction)
+        prediction = model.predict(features)
+        is_suspicious = bool(prediction[0])
 
-        # Response to React
+        # Prepare the response
         result = {
             "fileName": data.get("fileName", "unknown"),
             "isSuspicious": is_suspicious,
@@ -46,4 +49,6 @@ def analyze():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
 
