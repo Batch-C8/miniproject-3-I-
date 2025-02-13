@@ -27,7 +27,7 @@ const FileUpload = () => {
       formData.append("file", uploadedFile);
 
       try {
-        const response = await fetch("http://127.0.0.1:5000/scan", {
+        const response = await fetch("https://ransomware-backend.onrender.com/scan", {
           method: "POST",
           body: formData,
         });
@@ -59,7 +59,7 @@ const FileUpload = () => {
     setError(null);
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/analyze", {
+      const response = await fetch("https://ransomware-backend.onrender.com/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
